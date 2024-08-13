@@ -28,7 +28,7 @@ namespace ClamAVRestAPI.Controllers
                 return BadRequest(new { error = "No file provided" });
             }
 
-            var uploadPath = Path.Combine("C:\\Users\\ajil.jose\\Downloads\\", file.FileName);
+            var uploadPath = Path.Combine("D:\\Learning Section\\ClamAVRestAPI\\ClamAVRestAPI\\tempFile\\", file.FileName);
             //var uploadPath = "C:\\Users\\ajil.jose\\Downloads\\UK_FORM_PRAKASH.pdf";
 
             using (var stream = new FileStream(uploadPath, FileMode.Create))
@@ -36,7 +36,9 @@ namespace ClamAVRestAPI.Controllers
                 await file.CopyToAsync(stream);
             }
 
-            var result = await ScanWithClamAV(uploadPath);
+            //var result = await ScanWithClamAV(uploadPath);
+            var result = await ScanTest(uploadPath);
+
             System.IO.File.Delete(uploadPath); // Clean up the file after scanning
 
             return Ok(result);
@@ -84,6 +86,47 @@ namespace ClamAVRestAPI.Controllers
                         return output;
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+                return ex.Message;
+            }
+        }
+
+        private async Task<string> ScanTest(string filepath)
+        {
+
+            try
+            {
+                var clam = new ClamClient("localhost", 7214);
+                var pingResult = await clam.TryPingAsync();
+
+                if (!pingResult)
+                {
+                    Console.WriteLine("test failed. Exiting.");
+                    return null;
+                }
+
+                Console.WriteLine("connected.");
+
+                Console.Write("\t* Scanning file: ");
+                var scanResult = await clam.ScanFileOnServerAsync(filepath);  //any file you would like!
+
+                switch (scanResult.Result)
+                {
+                    case ClamScanResults.Clean:
+                        Console.WriteLine("The file is clean!");
+                        break;
+                    case ClamScanResults.VirusDetected:
+                        Console.WriteLine("Virus Found!");
+                        Console.WriteLine("Virus name: {0}", scanResult.InfectedFiles.First().VirusName);
+                        break;
+                    case ClamScanResults.Error:
+                        Console.WriteLine("Woah an error occured! Error: {0}", scanResult.RawResult);
+                        break;
+                }
+                return scanResult.RawResult;
             }
             catch (Exception ex)
             {
