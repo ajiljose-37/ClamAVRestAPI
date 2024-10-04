@@ -6,6 +6,7 @@ using Docker.DotNet;
 using Docker.DotNet.Models;
 using System;
 using System.Collections.Generic;
+using nClam;
 
 namespace ClamAVRestAPI.Controllers
 {
@@ -36,7 +37,7 @@ namespace ClamAVRestAPI.Controllers
                 await file.CopyToAsync(stream);
             }
 
-            var result = await ScanWithClamAV(uploadPath);
+            var result = await ScanFiles(uploadPath);
 
             System.IO.File.Delete(uploadPath); // Clean up the file after scanning
 
@@ -91,6 +92,39 @@ namespace ClamAVRestAPI.Controllers
                 Console.WriteLine(ex.ToString());
                 return ex.Message;
             }
+        }
+
+        public async Task<string> ScanFiles(string filePath)
+        {
+            // Specify the ClamAV Daemon IP and Port (localhost:3310)
+            var clam = new ClamClient("localhost", 3310);
+
+            string result = string.Empty;
+
+            // File to scan (Ensure the file path is accessible)
+            //string filePath = "path/to/file";
+
+            // Read the file bytes
+            byte[] fileBytes = await System.IO.File.ReadAllBytesAsync(filePath);
+
+            // Scan the file using ClamAV
+            var scanResult = await clam.SendAndScanFileAsync(fileBytes);
+
+            // Evaluate the result
+            if (scanResult.Result == ClamScanResults.Clean)
+            {
+                result = "The file is clean!";
+            }
+            else if (scanResult.Result == ClamScanResults.VirusDetected)
+            {
+                result = $"Virus detected: {scanResult.InfectedFiles[0].VirusName}";
+            }
+            else
+            {
+                result = "Error scanning the file.";
+            }
+
+            return result;
         }
 
     }
